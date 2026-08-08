@@ -166,7 +166,7 @@ if [ ! -f "$FLUTTER_ARCHIVE" ]; then
 fi
 
 if [ ! -d "$FLUTTER_ROOT" ]; then
-    TMP_FLUTTER="${HOME}/.local/flutter-install-${$$}"
+    TMP_FLUTTER="${HOME}/.local/flutter-install-$$"
 
     rm -rf "$TMP_FLUTTER"
     mkdir -p "$TMP_FLUTTER"
