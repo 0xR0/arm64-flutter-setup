@@ -1,0 +1,17 @@
+# Android build outputs
+/build
+/app/debug
+/app/profile
+/app/release
+
+# Local machine configuration
+/local.properties
+
+# Android Studio
+*.iml
+.gradle/
+
+# Do NOT ignore Gradle wrapper.
+# gradlew
+# gradlew.bat
+# gradle/wrapper/gradle-wrapper.jar

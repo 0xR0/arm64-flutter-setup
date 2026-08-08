@@ -1,0 +1,42 @@
+# Flutter / Dart
+.dart_tool/
+build/
+.pub/
+.packages
+
+# Android / Gradle
+.gradle/
+**/.gradle/
+android/.gradle/
+**/local.properties
+
+# Signing / credentials
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+key.properties
+**/key.properties
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Firebase / Google credentials
+google-services.json
+GoogleService-Info.plist
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
