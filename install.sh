@@ -27,7 +27,6 @@ DOWNLOAD_DIR="${HOME}/.cache/arm64-flutter-setup"
 GRADLE_DIR="${HOME}/.gradle"
 GRADLE_PROPERTIES="${GRADLE_DIR}/gradle.properties"
 
-FLUTTER_URL="https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz"
 
 ANDROID_CMDLINE_URL="https://dl.google.com/android/repository/commandlinetools-linux-14742923_latest.zip"
 
@@ -155,36 +154,36 @@ mkdir -p \
 
 info "Installing Flutter ${FLUTTER_VERSION}"
 
-FLUTTER_ARCHIVE="${DOWNLOAD_DIR}/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz"
+if [ ! -d "$FLUTTER_ROOT/.git" ]; then
+    rm -rf "$FLUTTER_ROOT"
 
-if [ ! -f "$FLUTTER_ARCHIVE" ]; then
-    curl -fL \
-        --retry 3 \
-        --retry-delay 2 \
-        "$FLUTTER_URL" \
-        -o "$FLUTTER_ARCHIVE"
-fi
-
-if [ ! -d "$FLUTTER_ROOT" ]; then
-    TMP_FLUTTER="${HOME}/.local/flutter-install-$$"
-
-    rm -rf "$TMP_FLUTTER"
-    mkdir -p "$TMP_FLUTTER"
-
-    tar -xJf "$FLUTTER_ARCHIVE" -C "$TMP_FLUTTER"
-
-    [ -d "$TMP_FLUTTER/flutter" ] ||
-        die "Flutter archive did not contain the expected flutter directory."
-
-    mv "$TMP_FLUTTER/flutter" "$FLUTTER_ROOT"
-
-    rm -rf "$TMP_FLUTTER"
+    git clone \
+        --depth 1 \
+        --branch "$FLUTTER_VERSION" \
+        https://github.com/flutter/flutter.git \
+        "$FLUTTER_ROOT"
 fi
 
 FLUTTER_BIN="${FLUTTER_ROOT}/bin/flutter"
 
 [ -x "$FLUTTER_BIN" ] ||
     die "Flutter executable not found: $FLUTTER_BIN"
+
+info "Bootstrapping Flutter for ARM64"
+
+"$FLUTTER_BIN" --version >/dev/null
+
+DART_BIN="${FLUTTER_ROOT}/bin/cache/dart-sdk/bin/dart"
+
+[ -x "$DART_BIN" ] ||
+    die "ARM64 Dart SDK was not bootstrapped: $DART_BIN"
+
+if ! file "$DART_BIN" | grep -q 'ARM aarch64'; then
+    echo
+    echo "ERROR: Flutter downloaded a non-ARM64 Dart SDK."
+    file "$DART_BIN"
+    exit 1
+fi
 
 FLUTTER_ACTUAL="$(
     "$FLUTTER_BIN" --version 2>&1 |
@@ -196,6 +195,9 @@ echo "$FLUTTER_ACTUAL"
 echo "$FLUTTER_ACTUAL" |
     grep -q "Flutter ${FLUTTER_VERSION}" ||
     die "Installed Flutter version does not match ${FLUTTER_VERSION}."
+
+echo "ARM64 Dart SDK:"
+file "$DART_BIN"
 
 # ------------------------------------------------------------
 # PATH
