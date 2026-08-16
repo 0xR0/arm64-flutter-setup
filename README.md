@@ -129,15 +129,3 @@ adb devices
 
 Enable **Wireless debugging** in Android Developer options first.
 
-## Security
-
-Never commit private credentials or signing files. `.gitignore` excludes:
-`.env`, `.env.*`, `key.properties`, `*.jks`, `*.keystore`, `*.p12`, `*.pfx`,
-`*.pem`, `*.key`, `google-services.json`, `GoogleService-Info.plist`, and
-common build directories.
-
-Before pushing, run:
-
-```bash
-git status --short
-```
