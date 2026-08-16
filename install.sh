@@ -11,8 +11,8 @@
 #     - Ubuntu side:   installs OpenJDK 17, Flutter, Android SDK, ARM64 AAPT2/aidl/zipalign/split-select,
 #                      configures Gradle to use ARM64 AAPT2.
 #
-#   Idempotent: her adım "varsa atla" mantığıyla yeniden çalıştırılabilir.
-#   Debian PRoot dokunulmaz.
+#   Idempotent: each step is skipped if the component is already present.
+#   Does not touch any pre-existing Debian PRoot.
 #
 
 set -euo pipefail
@@ -218,28 +218,28 @@ EOF
 # ============================================================
 
 run_termux_setup() {
-    info "Termux tarafı: proot Ubuntu ortamı hazırlanıyor"
+    info "Termux side: preparing proot Ubuntu environment"
 
     command -v proot-distro >/dev/null 2>&1 || pkg install -y proot-distro
     command -v curl         >/dev/null 2>&1 || pkg install -y curl
 
     if proot-distro list --installed 2>/dev/null | grep -qw "$UBUNTU_DISTRO"; then
-        ok "Ubuntu proot zaten kurulu — atlanıyor"
+        ok "Ubuntu proot already installed — skipping"
     else
-        info "Ubuntu proot indiriliyor (biraz sürebilir)"
+        info "Downloading Ubuntu proot (this can take a while)"
         proot-distro install "$UBUNTU_DISTRO"
     fi
 
-    info "Ubuntu proot içinde installer çalıştırılıyor"
+    info "Running installer inside Ubuntu proot"
     proot-distro login "$UBUNTU_DISTRO" --bind /sdcard -- \
         bash -c "curl -fsSL '${SELF_URL}' | bash"
 
     setup_termux_bashrc
     verify_debug_build
 
-    printf '\n%s✓ Kurulum tamamlandı.%s\n' "$_c_green" "$_c_reset"
-    printf 'Yeni terminal açın veya:  %ssource ~/.bashrc%s\n\n' "$_c_yellow" "$_c_reset"
-    printf 'Kullanım (Termux):\n'
+    printf '\n%s✓ Install complete.%s\n' "$_c_green" "$_c_reset"
+    printf 'Open a new shell or run:  %ssource ~/.bashrc%s\n\n' "$_c_yellow" "$_c_reset"
+    printf 'Usage (from Termux):\n'
     printf '  flutter --version\n'
     printf '  flutter create ~/projects/hello\n'
     printf '  cd ~/projects/hello\n'
@@ -248,7 +248,7 @@ run_termux_setup() {
 }
 
 setup_termux_bashrc() {
-    info "Termux ~/.bashrc wrapper'ları yazılıyor"
+    info "Writing Termux ~/.bashrc wrappers"
 
     local bashrc="$HOME/.bashrc"
     local marker='# >>> arm64-flutter-setup >>>'
@@ -256,15 +256,15 @@ setup_termux_bashrc() {
     [ -f "$bashrc" ] || touch "$bashrc"
 
     if grep -qF "$marker" "$bashrc"; then
-        ok "bashrc bloğu zaten mevcut — atlanıyor"
+        ok "bashrc block already present — skipping"
         return
     fi
 
     cat >> "$bashrc" <<'EOF'
 
 # >>> arm64-flutter-setup >>>
-# Flutter/Dart çağrılarını Ubuntu proot içine yönlendiren wrapper'lar.
-# Şart: proot-distro ile "ubuntu" distrosu kurulu olmalı.
+# Wrappers that transparently forward Flutter/Dart calls into the Ubuntu proot.
+# Requires: proot-distro with distro "ubuntu" installed.
 
 _ARM64_FLUTTER_DISTRO="ubuntu"
 _ARM64_FLUTTER_TERMUX_HOME="/data/data/com.termux/files/home"
@@ -293,11 +293,11 @@ dart()          { _arm64_flutter_run dart    "$@"; }
 flutter-shell() { proot-distro login "$_ARM64_FLUTTER_DISTRO" --bind /sdcard; }
 # <<< arm64-flutter-setup <<<
 EOF
-    ok "bashrc güncellendi"
+    ok "bashrc updated"
 }
 
 verify_debug_build() {
-    info "Doğrulama: debug APK build"
+    info "Verification: building a debug APK"
 
     proot-distro login "$UBUNTU_DISTRO" --bind /sdcard -- bash -lc '
         set -e
@@ -314,9 +314,9 @@ verify_debug_build() {
             cp "$apk" /sdcard/Download/verify_app-debug.apk
             echo "APK -> /sdcard/Download/verify_app-debug.apk"
         fi
-    ' || die "Debug APK build başarısız"
+    ' || die "Debug APK build failed"
 
-    ok "Debug APK doğrulandı"
+    ok "Debug APK verified"
 }
 
 # ============================================================
