@@ -1,270 +1,143 @@
 # Flutter ARM64 Android Build Environment
 
-Build Flutter Android applications directly on ARM64 Linux environments such as:
+Single-command Flutter setup for **Termux + PRoot Ubuntu** on ARM64 Android.
 
-- Debian 12 ARM64
-- Termux + PRoot
-- ARM64 Linux containers
-- ARM64 single-board computers
+```bash
+curl -fsSL https://raw.githubusercontent.com/0xR0/arm64-flutter-setup/main/install.sh | bash
+```
 
-This project provides a tested configuration for building Flutter Android
-APK and AAB packages on ARM64 Linux.
+That's it. The installer:
 
-## Why This Project Exists
+1. Installs `proot-distro` and Ubuntu (if missing).
+2. Enters the Ubuntu proot and installs OpenJDK 17, Flutter 3.27.4, Android SDK 35.
+3. Replaces the x86-64 build-tools binaries (`aapt2`, `aidl`, `zipalign`, `split-select`)
+   with native ARM64 builds and configures Gradle via
+   `android.aapt2FromMavenOverride`.
+4. Adds `flutter`, `dart`, and `flutter-shell` wrappers to your Termux `~/.bashrc`
+   so you can call `flutter` directly from Termux — the wrapper transparently
+   forwards the command into the Ubuntu proot with the current directory bound in.
+5. Builds a debug APK and copies it to `/sdcard/Download/verify_app-debug.apk`
+   as an end-to-end check.
 
-Flutter's Android build process normally expects Android build tools such as
-AAPT2 to match the host architecture.
+The script is **idempotent** — re-running it skips anything already installed.
+It does not touch a pre-existing Debian PRoot.
 
-On ARM64 Linux, some Android SDK Build Tools packages may contain x86-64
-executables. Those binaries cannot run natively on an ARM64 Linux userspace.
+## Requirements
 
-This setup uses a native ARM64 AAPT2 binary and configures Gradle to use it:
+- Android device with Termux
+- Storage permission granted to Termux (`termux-setup-storage`)
+- Working internet connection
 
-    android.aapt2FromMavenOverride
+## Usage after install
 
-The result is a working Flutter Android release build environment on ARM64.
+Open a new shell (or `source ~/.bashrc`):
+
+```bash
+flutter --version
+flutter create ~/projects/hello
+cd ~/projects/hello
+flutter build apk --debug --target-platform android-arm64
+```
+
+The APK is written into `build/app/outputs/flutter-apk/` inside the project.
+
+To enter the Ubuntu shell directly:
+
+```bash
+flutter-shell
+```
+
+## How the wrappers work
+
+The Termux `flutter` / `dart` functions call `proot-distro login ubuntu` with
+your current working directory bind-mounted into the proot. If you're inside
+`$HOME`, Termux `$HOME` is mounted at `/host-home`; if you're outside, the
+current directory is mounted at `/host-project`. The wrapper then runs the
+real Flutter binary from inside the Ubuntu environment.
+
+Effect: from your perspective, `flutter` "just works" in Termux without ever
+having to type `proot-distro login` yourself.
+
+## Why ARM64 AAPT2
+
+Google ships the Android SDK build tools as x86-64 binaries. On ARM64 Linux
+they cannot run natively. This setup swaps them with ARM64 builds from
+[`Commit451/android-arm-build-tools`](https://github.com/Commit451/android-arm-build-tools)
+and points Gradle at the replacement via `~/.gradle/gradle.properties`:
+
+```
+android.aapt2FromMavenOverride=$HOME/.local/android-sdk/build-tools/35.0.1/aapt2
+```
 
 ## Tested Environment
 
-The current tested environment:
-
-- Debian GNU/Linux 12 (bookworm)
-- ARM64 / aarch64
-- Termux + PRoot
-- Flutter 3.27.4
-- Dart 3.6.2
-- OpenJDK 17
-- Gradle 8.3
-- Android Gradle Plugin 8.1.0
-- Android SDK
-- ARM64 AAPT2
-- Flutter Android target: android-arm64
-
-## Important: ARM64 Target
-
-For ARM64-only Flutter Android builds, explicitly specify:
-
-    --target-platform android-arm64
-
-Example:
-
-    flutter build apk --release --target-platform android-arm64
-
-For an Android App Bundle:
-
-    flutter build appbundle --release --target-platform android-arm64
-
-This is important when the goal is to produce an ARM64-only Flutter application.
-
-## Build Verification
-
-Create a new Android Flutter project:
-
-    flutter create --platforms=android test_app
-
-Enter the project:
-
-    cd test_app
-
-Build an ARM64 APK:
-
-    flutter build apk --release --target-platform android-arm64
-
-Build an ARM64 AAB:
-
-    flutter build appbundle --release --target-platform android-arm64
-
-The generated files are:
-
-    build/app/outputs/flutter-apk/app-release.apk
-
-    build/app/outputs/bundle/release/app-release.aab
-
-## Verify APK ABI
-
-You can inspect the native libraries inside the APK:
-
-    unzip -l build/app/outputs/flutter-apk/app-release.apk | grep 'lib/'
-
-For an ARM64-only build, the expected Flutter native libraries are under:
-
-    lib/arm64-v8a/
-
-For example:
-
-    lib/arm64-v8a/libapp.so
-    lib/arm64-v8a/libflutter.so
-
-## ARM64 AAPT2
-
-The important part of this setup is the ARM64 AAPT2 binary.
-
-Gradle is configured with:
-
-    android.aapt2FromMavenOverride=/path/to/arm64/aapt2
-
-The provided installation script expects the binary at:
-
-    $HOME/prebuilt-binary/arm64/aapt2
-
-The binary must be an ARM64 Linux executable.
-
-Check it with:
-
-    file $HOME/prebuilt-binary/arm64/aapt2
-
-Expected architecture:
-
-    ARM aarch64
-
-## Installation Script
-
-The included `install.sh` does not blindly replace the existing Flutter
-or Android SDK installation.
-
-It checks:
-
-1. Host architecture
-2. Java 17
-3. Flutter 3.27.4
-4. Android SDK
-5. ARM64 AAPT2
-6. Gradle configuration
-
-Then it configures:
-
-    $HOME/.gradle/gradle.properties
-
-with:
-
-    android.aapt2FromMavenOverride=$HOME/prebuilt-binary/arm64/aapt2
-
-Run:
-
-    chmod +x install.sh
-    ./install.sh
-
-The script is designed to configure an existing environment rather than
-delete and reinstall the entire Android/Flutter toolchain.
-
-## Flutter Version
-
-This repository was tested with:
-
-    Flutter 3.27.4
-
-Other Flutter versions may work, but they have not been verified as part
-of this setup.
-
-## Java
-
-Java 17 is required by the tested configuration.
-
-Check:
-
-    java -version
-
-Expected:
-
-    openjdk version "17..."
-
-## Gradle
-
-The tested project uses:
-
-    Gradle 8.3
-
-The Android Gradle Plugin version used by the test project is:
-
-    8.1.0
+| Component | Version |
+|-----------|---------|
+| Host      | Termux + PRoot Ubuntu (ARM64) |
+| Flutter   | 3.27.4 |
+| Dart      | 3.6.2 |
+| Java      | OpenJDK 17 |
+| Android SDK | API 35, build-tools 35.0.1 |
+| Target    | `android-arm64` (debug) |
+
+## What works / doesn't work
+
+- **Debug APK build**: works. Debug uses JIT so it runs natively on ARM64.
+- **Release APK build**: **not currently working**. Google only publishes
+  `linux-x64` `gen_snapshot` binaries for Android AOT compilation. There is no
+  native ARM64 host-side `gen_snapshot` for Android targets, and running the
+  x86-64 one under user-mode QEMU produces a Dart VM `dedup_instructions`
+  product-mode mismatch at runtime.
+
+For release builds you currently need an x86-64 host (or a working
+`qemu-x86_64` wrapper that matches the Dart VM product-mode expectations).
+
+## Layout inside Ubuntu proot
+
+```
+~/.local/flutter-3.27.4/         # Flutter SDK
+~/.local/android-sdk/            # Android SDK
+~/.cache/arm64-flutter-setup/    # Downloaded archives
+~/.gradle/gradle.properties      # AAPT2 override
+```
+
+## Uninstall
+
+Inside the Ubuntu proot:
+
+```bash
+rm -rf ~/.local/flutter-3.27.4 ~/.local/android-sdk ~/.cache/arm64-flutter-setup
+sed -i '/# >>> arm64-flutter-setup >>>/,/# <<< arm64-flutter-setup <<</d' ~/.bashrc
+```
+
+In Termux:
+
+```bash
+sed -i '/# >>> arm64-flutter-setup >>>/,/# <<< arm64-flutter-setup <<</d' ~/.bashrc
+proot-distro remove ubuntu     # optional — removes the whole distro
+```
+
+## Wi-Fi Debugging (ADB)
+
+For `flutter run` and hot reload over Wi-Fi:
+
+```bash
+pkg install android-tools
+adb connect <phone-ip>:<port>
+adb devices
+```
+
+Enable **Wireless debugging** in Android Developer options first.
 
 ## Security
 
-Do not commit private credentials or signing files to this repository.
+Never commit private credentials or signing files. `.gitignore` excludes:
+`.env`, `.env.*`, `key.properties`, `*.jks`, `*.keystore`, `*.p12`, `*.pfx`,
+`*.pem`, `*.key`, `google-services.json`, `GoogleService-Info.plist`, and
+common build directories.
 
-The repository ignores common sensitive files such as:
+Before pushing, run:
 
-- `.env`
-- `.env.*`
-- `key.properties`
-- `*.jks`
-- `*.keystore`
-- `*.p12`
-- `*.pfx`
-- `*.pem`
-- `*.key`
-- `google-services.json`
-- `GoogleService-Info.plist`
-
-It also ignores generated build directories and local Android configuration.
-
-Before pushing a project to GitHub, always inspect:
-
-    git status --short
-
-and verify that no private credentials, signing keys, tokens, or API keys
-are being committed.
-
-## Included Test Project
-
-The `test_app` directory contains a minimal Flutter Android project used
-to verify the ARM64 build configuration.
-
-It is included as a reproducible build test.
-
-## Current Build Result
-
-The tested ARM64 environment successfully produced:
-
-    APK
-    AAB
-
-The APK contained:
-
-    lib/arm64-v8a/libapp.so
-    lib/arm64-v8a/libflutter.so
-
-This confirms that the Flutter application was compiled for the ARM64
-Android ABI.
-
-## Limitations
-
-This project does not provide a complete replacement for Android Studio.
-
-Android Studio can still be useful for:
-
-- Android project inspection
-- SDK management
-- Visual debugging
-- Logcat
-- Device management
-- Android development tools
-
-The purpose of this repository is specifically to provide a working
-ARM64 Linux Flutter Android build environment.
-
-## Termux / Wi-Fi Debugging
-
-When Android debugging is configured separately, an Android device can
-be connected over Wi-Fi using ADB.
-
-This makes it possible to use Flutter development workflows such as:
-
-    flutter devices
-
-    flutter run
-
-and hot reload without requiring a physical USB connection.
-
-Wi-Fi ADB configuration depends on the Android device and environment and
-is not automatically configured by this repository.
-
-## Disclaimer
-
-This configuration is based on a tested ARM64 environment.
-
-Android SDK, Gradle, Flutter, and Android Gradle Plugin versions can change
-over time. A configuration that works with one version may require changes
-with another version.
-
-Always verify the toolchain before using it for production builds.
+```bash
+git status --short
+```
