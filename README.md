@@ -3,7 +3,7 @@
 Single-command Flutter setup for **Termux + PRoot Ubuntu** on ARM64 Android.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/0xR0/arm64-flutter-setup/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/0xR0/arm64-flutter-setup/master/install.sh | bash
 ```
 
 That's it. The installer:

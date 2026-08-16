@@ -30,7 +30,7 @@ UBUNTU_DISTRO="ubuntu"
 ANDROID_CMDLINE_URL="https://dl.google.com/android/repository/commandlinetools-linux-14742923_latest.zip"
 ARM_BUILD_TOOLS_BASE="https://github.com/Commit451/android-arm-build-tools/releases/download/${ARM_BUILD_TOOLS_TAG}"
 
-SELF_URL="${SELF_URL:-https://raw.githubusercontent.com/0xR0/arm64-flutter-setup/main/install.sh}"
+SELF_URL="${SELF_URL:-https://raw.githubusercontent.com/0xR0/arm64-flutter-setup/master/install.sh}"
 
 # ---------------- UI helpers ----------------
 
